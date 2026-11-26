@@ -520,11 +520,64 @@ function applyShot() {
   const preset = shotPreset(shot.shot);
   if (!preset) return;
   activeShotPreset = preset;
+
+  // STAGING-ONLY extension: a preset may stage a later campaign leg.
+  // Rebuild mission + flight state for that leg and set its environment
+  // (night fog/lights, storm rain) exactly as startMission() would, so
+  // the frozen shot shows the leg the HUD claims we are on.
+  if (preset.missionIndex !== undefined && preset.missionIndex !== campaign.missionIndex) {
+    campaign.missionIndex = preset.missionIndex;
+    campaign.totalScore = preset.campaignScore || 0;
+    mission = createMissionState(campaign);
+    flight = createFlightState(mission.from);
+    buildRingMeshes();
+    const night = mission.definition.night;
+    setDayPhase(sky, night ? 'night' : 'golden');
+    scene.fog = new THREE.Fog(night ? 0x0d1428 : 0xf2a56b, WORLD.fogNear, WORLD.fogFar);
+    if (lights) {
+      lights.sun.intensity = night ? 0.25 : 1.6;
+      lights.ambient.intensity = night ? 0.25 : 0.6;
+      lights.hemi.intensity = night ? 0.2 : 0.5;
+    }
+    if (rain) rain.visible = mission.definition.storm;
+    // Drop the boot welcome line so the staged feed stays clear of the
+    // touch buttons, then mirror startMission()'s feed so the card and
+    // feed tell one story.
+    const feed = document.getElementById('message-feed');
+    if (feed) feed.innerHTML = '';
+    pushMessage(missionBrief(mission));
+    pushMessage(`Depart ${mission.from.name} — land at ${mission.to.name}.`);
+  }
+
   applyShotToFlightState(flight, preset);
   setDayPhase(sky, preset.phase);
+
+  // STAGING-ONLY extension: accumulated campaign state the original
+  // presets never needed (score, mission clock, fuel, wind, sink rate).
+  // The shot freeze never calls updateMission/stepFlight, so these hold.
+  if (preset.score !== undefined) mission.score = preset.score;
+  if (preset.timeLeft !== undefined) mission.timeLeft = preset.timeLeft;
+  if (preset.fuel !== undefined) flight.fuel = preset.fuel;
+  if (preset.wind) flight.wind = { speed: preset.wind.speed, direction: preset.wind.direction };
+  if (preset.aircraft.verticalSpeed !== undefined) flight.verticalSpeed = preset.aircraft.verticalSpeed;
+  if (preset.messages) preset.messages.forEach((text) => pushMessage(text));
+
   if (preset.mode === 'title') {
     gameState = 'title';
     showOverlay('overlay-title');
+  } else if (preset.mode === 'landed') {
+    gameState = 'landed';
+    mission.ringsPassed = preset.hud.ringsPassed || 0;
+    mission.rings.forEach((ring, index) => {
+      ring.passed = index < mission.ringsPassed;
+    });
+    showOverlay('overlay-landed');
+    if (preset.landed) {
+      const title = document.getElementById('landed-title');
+      const detail = document.getElementById('landed-detail');
+      if (title) title.textContent = preset.landed.title;
+      if (detail) detail.textContent = preset.landed.detail;
+    }
   } else {
     gameState = 'flying';
     hideOverlays();
