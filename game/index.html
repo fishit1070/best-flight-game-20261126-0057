@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KELANA-9 — Archipelago Air Courier</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="game-container"></div>
+
+  <!-- WebGL failure message (shown only if the context cannot start) -->
+  <div id="webgl-error" role="alert"></div>
+
+  <!-- Top bar: title, score, timer, state -->
+  <header id="top-bar">
+    <div class="brand">KELANA-9 <span>Archipelago Air Courier</span></div>
+    <div class="top-stats">
+      <div class="top-stat"><label>Score</label><strong id="hud-score">0</strong></div>
+      <div class="top-stat"><label>Time</label><strong id="hud-timer">07:00</strong></div>
+      <div class="top-stat"><label>View</label><strong id="hud-state">CHASE</strong></div>
+    </div>
+  </header>
+
+  <!-- Instrument cluster -->
+  <section id="instruments" aria-label="Flight instruments">
+    <div class="instrument">
+      <label>Altitude (m)</label>
+      <strong id="hud-alt">0</strong>
+    </div>
+    <div class="instrument">
+      <label>Airspeed (kt)</label>
+      <strong id="hud-speed">0</strong>
+    </div>
+    <div class="instrument">
+      <label>Vertical (m/s)</label>
+      <strong id="hud-vspeed">+0.0</strong>
+    </div>
+    <div class="instrument">
+      <label>Heading</label>
+      <strong id="hud-heading">N 090°</strong>
+    </div>
+    <div class="instrument horizon-wrap">
+      <label>Attitude</label>
+      <canvas id="hud-horizon" width="140" height="84"></canvas>
+    </div>
+    <div class="instrument">
+      <label>Throttle</label>
+      <div class="bar"><div class="bar-fill throttle" id="hud-throttle-fill"></div></div>
+      <strong id="hud-throttle-value">0%</strong>
+    </div>
+    <div class="instrument">
+      <label>Fuel</label>
+      <div class="bar"><div class="bar-fill fuel" id="hud-fuel-fill"></div></div>
+      <strong id="hud-fuel-value">100%</strong>
+    </div>
+    <div class="instrument">
+      <label>Config</label>
+      <span class="chip" id="hud-gear">GEAR DOWN</span>
+      <span class="chip" id="hud-flaps">FLAPS UP</span>
+    </div>
+    <div class="instrument">
+      <label>Wind</label>
+      <strong id="hud-wind">WIND 135° 8kt</strong>
+      <div id="hud-compass" class="compass-needle" aria-hidden="true"></div>
+    </div>
+  </section>
+
+  <!-- Stall warning banner -->
+  <div id="hud-stall" role="alert"></div>
+
+  <!-- Mission card -->
+  <aside id="mission-card">
+    <h2 id="mission-name">Surat Kilat — Express Mail Run</h2>
+    <p class="cargo" id="mission-cargo">Mail sacks — 40 kg</p>
+    <p class="leg" id="mission-leg">BANDA → TANJUNG</p>
+    <p class="ring" id="mission-ring">Ring 1/4 — 0 m</p>
+    <p class="time" id="mission-time">TIME 07:00</p>
+  </aside>
+
+  <!-- Message feed -->
+  <div id="message-feed" aria-live="polite"></div>
+
+  <!-- Controls legend -->
+  <footer id="controls-legend">
+    <span><b>↑ / ↓</b> pitch</span>
+    <span><b>← / →</b> roll</span>
+    <span><b>Shift / Ctrl</b> throttle</span>
+    <span><b>G</b> gear</span>
+    <span><b>F</b> flaps</span>
+    <span><b>Space</b> airbrake</span>
+    <span><b>C</b> camera</span>
+    <span><b>P</b> pause</span>
+    <span><b>M</b> mute</span>
+    <span><b>R</b> reset</span>
+  </footer>
+
+  <!-- On-screen buttons -->
+  <div id="touch-buttons">
+    <button type="button" data-action="gear">Gear</button>
+    <button type="button" data-action="flaps">Flaps</button>
+    <button type="button" data-action="camera">Camera</button>
+    <button type="button" data-action="mute">Mute</button>
+  </div>
+
+  <!-- Title overlay -->
+  <div class="overlay is-visible" id="overlay-title">
+    <div class="overlay-panel">
+      <p class="kicker">MAKE.FUN — BEST FLIGHT GAME</p>
+      <h1>KELANA-9</h1>
+      <p class="tagline">Archipelago Air Courier</p>
+      <p class="brief">Five islands. Five cargo runs. One golden-hour sky.
+        Fly the rings, mind your fuel, and put her down gently — the short
+        runways of the archipelago forgive nothing.</p>
+      <button type="button" class="big-button" data-action="start">Start Flying</button>
+      <p class="hint">Arrows / WASD to fly · Shift / Ctrl for throttle · G gear · F flaps</p>
+    </div>
+  </div>
+
+  <!-- Paused overlay -->
+  <div class="overlay" id="overlay-paused">
+    <div class="overlay-panel">
+      <h1>Paused</h1>
+      <p class="brief">The sky will wait. Press P or Resume to keep flying.</p>
+      <button type="button" class="big-button" data-action="resume">Resume</button>
+    </div>
+  </div>
+
+  <!-- Landed overlay -->
+  <div class="overlay" id="overlay-landed">
+    <div class="overlay-panel">
+      <h1 id="landed-title">Delivered!</h1>
+      <p class="brief" id="landed-detail"></p>
+      <button type="button" class="big-button" data-action="next-mission">Next Mission</button>
+      <button type="button" class="ghost-button" data-action="retry">Fly It Again</button>
+    </div>
+  </div>
+
+  <!-- Crashed overlay -->
+  <div class="overlay" id="overlay-crashed">
+    <div class="overlay-panel">
+      <h1>Crashed</h1>
+      <p class="brief" id="crash-reason">The courier is down.</p>
+      <button type="button" class="big-button" data-action="retry">Retry Mission</button>
+    </div>
+  </div>
+
+  <!-- Campaign complete overlay -->
+  <div class="overlay" id="overlay-complete">
+    <div class="overlay-panel">
+      <h1>Campaign Complete!</h1>
+      <p class="brief">All five cargo runs delivered across the archipelago.
+        The islands eat tonight because KELANA-9 flies.</p>
+      <button type="button" class="big-button" data-action="restart-campaign">Fly the Campaign Again</button>
+    </div>
+  </div>
+
+  <script src="vendor/three.min.js"></script>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
