@@ -9,6 +9,7 @@ export const DAY_PHASES = {
   golden: { sunElevation: 14, sunAzimuth: 265, top: 0x2b4a7a, horizon: 0xffb36b, fog: 0xf2a56b, ambient: 0.55 },
   noon: { sunElevation: 62, sunAzimuth: 180, top: 0x3a7bd5, horizon: 0xbfe3ff, fog: 0xcfe8f5, ambient: 0.85 },
   night: { sunElevation: -8, sunAzimuth: 250, top: 0x060a18, horizon: 0x1a2340, fog: 0x0d1428, ambient: 0.18 },
+  storm: { sunElevation: 7, sunAzimuth: 250, top: 0x27363f, horizon: 0x707d85, fog: 0x59666f, ambient: 0.3 },
 };
 
 function makeCloudTexture() {
@@ -153,6 +154,48 @@ export function setDayPhase(sky, phaseName) {
   sky.stars.material.opacity = phaseName === 'night' ? 0.9 : 0;
   sky.sun.visible = phase.sunElevation > 0;
   sky.halo.visible = phase.sunElevation > 0;
+  // Storm clouds: tint the cloud sprites grey (and slightly lower their
+  // opacity) in the storm phase; restore white / the previous opacity
+  // when switching back to any other phase. Clouds each own a material
+  // here, but de-duplicate so a shared material is only tinted once.
+  if (Array.isArray(sky.clouds)) {
+    const isStorm = phaseName === 'storm';
+    const seenMaterials = new Set();
+    for (const cloud of sky.clouds) {
+      const materials = Array.isArray(cloud?.material)
+        ? cloud.material
+        : cloud?.material
+          ? [cloud.material]
+          : [];
+      for (const material of materials) {
+        if (!material || seenMaterials.has(material)) continue;
+        seenMaterials.add(material);
+        if (!material.userData) material.userData = {};
+        if (isStorm) {
+          if (material.userData.skyDefaultOpacity === undefined
+            && typeof material.opacity === 'number') {
+            material.userData.skyDefaultOpacity = material.opacity;
+          }
+          material.userData.skyStormTinted = true;
+          if (material.color && typeof material.color.setHex === 'function') {
+            material.color.setHex(0x767f88);
+          }
+          if (typeof material.opacity === 'number') {
+            material.opacity = 0.85;
+          }
+        } else if (material.userData.skyStormTinted) {
+          material.userData.skyStormTinted = false;
+          if (material.color && typeof material.color.setHex === 'function') {
+            material.color.setHex(0xffffff);
+          }
+          if (typeof material.opacity === 'number'
+            && material.userData.skyDefaultOpacity !== undefined) {
+            material.opacity = material.userData.skyDefaultOpacity;
+          }
+        }
+      }
+    }
+  }
   return phase;
 }
 

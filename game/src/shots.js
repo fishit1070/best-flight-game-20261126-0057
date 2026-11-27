@@ -99,8 +99,8 @@ export function shotPreset(shotName) {
       };
     case 'cover':
       // FINAL leg (mission 5, Kargo Berat, Karang -> Banda) on short
-      // final: 135 m short of the Banda threshold (threshold = centre -
-      // forward * L/2 = (-310, 0) for heading 90, L = 620), ~15 m above
+      // final: 105 m short of the Banda threshold (threshold = centre -
+      // forward * L/2 = (-310, 0) for heading 90, L = 620), ~11 m above
       // the strip, gear and flaps down, both rings already banked.
       // Score chain: legs 1-4 banked 630 + 520 + 530 + 730 = 2410, plus
       // this leg's 2 rings (2 x 50) = 2510. Clock: 175 s left of 480.
@@ -114,7 +114,7 @@ export function shotPreset(shotName) {
         fuel: 58,
         wind: { speed: 5.2, direction: 135 },
         aircraft: {
-          position: { x: -445, y: 23, z: 0 },
+          position: { x: -415, y: 19, z: 0 },
           heading: 90,
           onGround: false,
           throttle: 0.32,
@@ -124,7 +124,7 @@ export function shotPreset(shotName) {
           verticalSpeed: -2.4,
           pitch: -0.04,
         },
-        camera: { mode: 'chase', distance: 16, height: 4.5 },
+        camera: { mode: 'chase', distance: 13.5, height: 3.6 },
         hud: { visible: true, missionIndex: 4, ringsPassed: 2 },
         messages: ['Ring 2/2 — +50 points.'],
       };
@@ -162,11 +162,11 @@ export function shotPreset(shotName) {
       // Mission 4 (Badai Teluk, the storm leg, Teluk -> Karang): rain
       // on (mission definition), storm wind 14 m/s = 27 kt on the HUD,
       // airframe banked 0.22 rad into a gust, ring 3 (36, 168, 1097)
-      // ahead ~180 m on heading 96. Score: legs 1-3 banked 1680 + 2
+      // ahead ~265 m on heading 96. Score: legs 1-3 banked 1680 + 2
       // rings (100) = 1780. Clock: 270 s left of 420.
       return {
         mode: 'flying',
-        phase: 'golden',
+        phase: 'storm',
         missionIndex: 3,
         campaignScore: 1680,
         score: 1780,
@@ -174,7 +174,7 @@ export function shotPreset(shotName) {
         fuel: 66,
         wind: { speed: 14, direction: 135 },
         aircraft: {
-          position: { x: -143, y: 165, z: 1078 },
+          position: { x: -227, y: 165, z: 1069 },
           heading: 96,
           onGround: false,
           throttle: 0.7,
@@ -204,7 +204,7 @@ export function shotPreset(shotName) {
       // 66% mid-leg -> 140 s left and 47% at rollout).
       return {
         mode: 'landed',
-        phase: 'golden',
+        phase: 'storm',
         missionIndex: 3,
         campaignScore: 1680,
         score: 2410,

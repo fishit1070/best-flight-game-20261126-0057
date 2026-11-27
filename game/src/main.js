@@ -177,18 +177,28 @@ function updateRingBeacon() {
 }
 
 function buildRain() {
-  const count = 1200;
-  const positions = new Float32Array(count * 3);
+  const count = 650;
+  const positions = new Float32Array(count * 2 * 3);
   const rng = makeRng(777);
+  // Streak slant: each segment is ~2.4 m long, tilted by the wind along
+  // the fall direction (0.32, -1, 0.14), so the top vertex sits +x/+z
+  // and above the bottom vertex.
+  const slant = new THREE.Vector3(0.32, 1, 0.14).normalize().multiplyScalar(2.4);
   for (let i = 0; i < count; i += 1) {
-    positions[i * 3] = rng.range(-80, 80);
-    positions[i * 3 + 1] = rng.range(0, 60);
-    positions[i * 3 + 2] = rng.range(-80, 80);
+    const x = rng.range(-40, 40);
+    const y = rng.range(0, 60);
+    const z = rng.range(-40, 40);
+    positions[i * 6] = x;
+    positions[i * 6 + 1] = y;
+    positions[i * 6 + 2] = z;
+    positions[i * 6 + 3] = x + slant.x;
+    positions[i * 6 + 4] = y + slant.y;
+    positions[i * 6 + 5] = z + slant.z;
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  rain = new THREE.Points(geometry, new THREE.PointsMaterial({
-    color: 0xaaccee, size: 0.35, transparent: true, opacity: 0.6,
+  rain = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({
+    color: 0xcfe0ee, transparent: true, opacity: 0.5,
   }));
   rain.visible = false;
   scene.add(rain);
@@ -198,10 +208,17 @@ function updateRain(dt) {
   if (!rain || !rain.visible) return;
   rain.position.set(flight.position.x, flight.position.y - 20, flight.position.z);
   const positions = rain.geometry.attributes.position;
-  for (let i = 0; i < positions.count; i += 1) {
-    let y = positions.getY(i) - dt * 55;
-    if (y < 0) y = 60;
+  const fall = dt * 55;
+  // Move both vertices of each segment together so streaks never stretch.
+  for (let i = 0; i < positions.count; i += 2) {
+    let y = positions.getY(i) - fall;
+    let topY = positions.getY(i + 1) - fall;
+    if (y < 0) {
+      y += 60;
+      topY += 60;
+    }
     positions.setY(i, y);
+    positions.setY(i + 1, topY);
   }
   positions.needsUpdate = true;
 }
@@ -212,12 +229,13 @@ function startMission(index) {
   flight = createFlightState(mission.from);
   buildRingMeshes();
   const night = mission.definition.night;
-  setDayPhase(sky, night ? 'night' : 'golden');
-  scene.fog = new THREE.Fog(night ? 0x0d1428 : 0xf2a56b, WORLD.fogNear, WORLD.fogFar);
+  const storm = !night && mission.definition.storm;
+  setDayPhase(sky, night ? 'night' : storm ? 'storm' : 'golden');
+  scene.fog = new THREE.Fog(night ? 0x0d1428 : storm ? 0x59666f : 0xf2a56b, WORLD.fogNear, WORLD.fogFar);
   if (lights) {
-    lights.sun.intensity = night ? 0.25 : 1.6;
-    lights.ambient.intensity = night ? 0.25 : 0.6;
-    lights.hemi.intensity = night ? 0.2 : 0.5;
+    lights.sun.intensity = night ? 0.25 : storm ? 0.7 : 1.6;
+    lights.ambient.intensity = night ? 0.25 : storm ? 0.35 : 0.6;
+    lights.hemi.intensity = night ? 0.2 : storm ? 0.3 : 0.5;
   }
   if (rain) rain.visible = mission.definition.storm;
   gameState = 'flying';
@@ -532,12 +550,13 @@ function applyShot() {
     flight = createFlightState(mission.from);
     buildRingMeshes();
     const night = mission.definition.night;
-    setDayPhase(sky, night ? 'night' : 'golden');
-    scene.fog = new THREE.Fog(night ? 0x0d1428 : 0xf2a56b, WORLD.fogNear, WORLD.fogFar);
+    const storm = !night && mission.definition.storm;
+    setDayPhase(sky, night ? 'night' : storm ? 'storm' : 'golden');
+    scene.fog = new THREE.Fog(night ? 0x0d1428 : storm ? 0x59666f : 0xf2a56b, WORLD.fogNear, WORLD.fogFar);
     if (lights) {
-      lights.sun.intensity = night ? 0.25 : 1.6;
-      lights.ambient.intensity = night ? 0.25 : 0.6;
-      lights.hemi.intensity = night ? 0.2 : 0.5;
+      lights.sun.intensity = night ? 0.25 : storm ? 0.7 : 1.6;
+      lights.ambient.intensity = night ? 0.25 : storm ? 0.35 : 0.6;
+      lights.hemi.intensity = night ? 0.2 : storm ? 0.3 : 0.5;
     }
     if (rain) rain.visible = mission.definition.storm;
     // Drop the boot welcome line so the staged feed stays clear of the
